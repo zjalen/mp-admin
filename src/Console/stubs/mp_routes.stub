@@ -1,0 +1,31 @@
+<?php
+
+use Illuminate\Routing\Router;
+
+Route::group([
+    'prefix' => config('mp_admin.route.prefix'),
+    'namespace' => config('mp_admin.route.namespace'),
+    'middleware' => 'web',
+], function (Router $router) {
+    $router->get('/', 'MpAdminController@index');
+});
+
+Route::group([
+    'prefix' => config('mp_admin.route.prefix'),
+    'middleware' => 'web',
+], function (Router $router) {
+    $router->apiResource('mp-info', \Jalen\MpAdmin\Controllers\MpInfoController::class);
+});
+
+Route::group([
+    'prefix' => config('mp_admin.route.prefix'),
+    'middleware' => config('mp_admin.route.middleware'),
+], function (Router $router) {
+    $router->get('menus/current', '\Jalen\MpAdmin\Controllers\MenusController@getCurrentMpMenu');
+    $router->post('menusToMp', '\Jalen\MpAdmin\Controllers\MenusController@getCurrentMpMenu');
+    $router->apiResource('menus', \Jalen\MpAdmin\Controllers\MenusController::class);
+    $router->apiResource('auto-reply-configs', \Jalen\MpAdmin\Controllers\AutoReplyConfigsController::class);
+    $router->apiResource('messages', \Jalen\MpAdmin\Controllers\MessagesController::class);
+    $router->apiResource('user-messages', \Jalen\MpAdmin\Controllers\UserMessagesController::class);
+    $router->apiResource('user-message-replies', \Jalen\MpAdmin\Controllers\UserMessageRepliesController::class);
+});

@@ -1,0 +1,146 @@
+<?php
+
+namespace DummyNamespace;
+
+use App\Http\Controllers\Controller;
+use EasyWeChat\Factory;
+use EasyWeChat\Kernel\Messages\Image;
+use EasyWeChat\Kernel\Messages\Message;
+use EasyWeChat\Kernel\Messages\News;
+use EasyWeChat\Kernel\Messages\NewsItem;
+use EasyWeChat\Kernel\Messages\Text;
+use Illuminate\Support\Facades\Log;
+use Jalen\MpAdmin\Models\AutoReplyConfig;
+use Jalen\MpAdmin\Models\MpInfo;
+use Jalen\MpAdmin\Models\UserMessage;
+use Jalen\MpAdmin\Handlers\MessageLogHandler;
+
+class MpAdminController extends Controller
+{
+    public function index()
+    {
+        return view('mp_admin');
+    }
+
+    /**
+     * 微信消息接口 get 方法验证 token，post 方法传递消息
+     * @param string $sign
+     * @return string|\Symfony\Component\HttpFoundation\Response
+     */
+    public function notify($sign = 'default')
+    {
+        //Log::info($message); # 注意：Log 为 Laravel 组件，所以它记的日志去 Laravel 日志看，而不是 EasyWeChat 日志
+        $mp_model = MpInfo::where('sign', $sign)->first();
+        if (!$mp_model) {
+            return false;
+        }
+        $config = $mp_model->toArray();
+        $app = Factory::officialAccount($config);
+        try {
+            // 记录用户信息 Log 日志
+            $app->server->push(MessageLogHandler::class, Message::TEXT|Message::VOICE|Message::VIDEO|Message::SHORT_VIDEO);
+            $app->server->push(function ($message) use($sign, $app, $mp_model){
+                switch ($message['MsgType']) {
+                    case 'event':
+                        if ($message['Event'] == 'subscribe') {
+                            // 关注后触发
+                            if (strstr($message['EventKey'], 'qrscene') !== false) {
+                                // 带参二维码关注触发
+                                $code = $message['EventKey'];
+                                return new Text($code);
+                            }else {
+                                return new Text('感谢关注我们!');
+                            }
+                        } elseif ($message['Event'] == 'SCAN' || $message['Event'] == 'scan') {
+                            // 扫码带参二维码
+                            $code = $message['EventKey'];
+                            return new News($code);
+                        }elseif($message['Event'] == 'CLICK'){
+                            // 菜单点击事件
+                            $auto_reply_config= AutoReplyConfig::where(function ($query) use ($message, $mp_model) {
+                                $query->where('mp_info_id', $mp_model->id)
+                                    ->where('text', $message['EventKey'])
+                                    ->where('type', AutoReplyConfig::TYPE_EVENT);
+                            })->first();
+                            if ($auto_reply_config) {
+                                $replyMessage = $this->replyMessage($auto_reply_config);
+                                if ($replyMessage) {
+                                    return $replyMessage;
+                                }
+                            }
+                        }
+                        return '收到事件消息';
+                        break;
+                    case 'text':
+                        // 用户回复对话框文本消息
+                        if ($message['Content'] == '测试') {
+                            $text = new Text('test');
+                            return $text;
+                        } else if ($message['Content'] == 'openid') {
+                            $text = new Text($message['FromUserName']);
+                            return $text;
+                        }
+
+                        $auto_reply_config= AutoReplyConfig::where(function ($query) use ($message, $mp_model) {
+                            $query->where('mp_info_id', $mp_model->id)
+                                ->where('text', 'like', '%'.$message['Content'].'%')
+                                ->where('type', AutoReplyConfig::TYPE_TEXT)
+                                ->where('match_type', AutoReplyConfig::MATCH_TYPE_HALF);
+                        })->orWhere(function ($query) use ($message, $mp_model) {
+                            $query->where('mp_info_id', $mp_model->id)
+                                ->where('text', $message['Content'])
+                                ->where('type', AutoReplyConfig::TYPE_TEXT)
+                                ->where('match_type', AutoReplyConfig::MATCH_TYPE_FULL);
+                        })->first();
+                        if ($auto_reply_config) {
+                            $replyMessage = $this->replyMessage($auto_reply_config);
+                            if ($replyMessage) {
+                                return $replyMessage;
+                            }
+                        }
+                        return '已收到消息，我们会尽快处理';
+                        break;
+                    case 'image':
+                        return '收到图片消息';
+                        break;
+                    case 'voice':
+                        return '收到语音消息';
+                        break;
+                    case 'video':
+                        return '收到视频消息';
+                        break;
+                    case 'location':
+                        return '收到坐标消息';
+                        break;
+                    case 'link':
+                        return '收到链接消息';
+                        break;
+                    // ... 其它消息
+                    default:
+                        return '收到其它消息';
+                        break;
+                }
+
+            });
+
+            return $app->server->serve();
+        }catch (\Exception $exception) {
+            Log::error($exception->getMessage());
+            return 'error';
+        }
+    }
+
+    public function replyMessage($auto_reply_config)
+    {
+        $msg = \Jalen\MpAdmin\Models\Message::find($auto_reply_config->message_id);
+        switch ($msg->type) {
+            case \Jalen\MpAdmin\Models\Message::TYPE_TEXT:
+                return new Text(json_decode($msg->content, true)['content']);
+            case \Jalen\MpAdmin\Models\Message::TYPE_IMAGE:
+                return new Image(json_decode($msg->content, true)['media_id']);
+            default:
+                break;
+        }
+        return null;
+    }
+}

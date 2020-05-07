@@ -1,0 +1,29 @@
+{
+    "name": "zjalen/mp-admin",
+    "description": "A wechat media platform control system.",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "zjalen",
+            "email": "zjalen@163.com"
+        }
+    ],
+    "require": {
+        "overtrue/wechat": "^4.2",
+        "ext-json": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Jalen\\MpAdmin\\": "src/"
+        }
+    },
+    "minimum-stability": "dev",
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Jalen\\MpAdmin\\MpAdminServiceProvider"
+            ],
+            "aliases": {}
+        }
+    }
+}
