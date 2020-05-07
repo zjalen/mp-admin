@@ -9,8 +9,7 @@
         }
     ],
     "require": {
-        "overtrue/wechat": "^4.2",
-        "ext-json": "*"
+        "overtrue/wechat": "^4.2"
     },
     "autoload": {
         "psr-4": {

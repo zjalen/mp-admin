@@ -234,6 +234,7 @@ abstract class BaseController extends Controller
 
     public function destroy($id)
     {
+        $this->mp_info = request()->get('mp_info');
         $model = $this->getModel();
         $model = $model->where('mp_info_id', $this->mp_info->id)->where('id', $id)->first();
         if (!$model) {

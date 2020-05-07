@@ -44,13 +44,27 @@ class Message extends Model
 
     protected $appends = ['type_name'];
 
-    public function mpInfo()
+    public function mp_info()
     {
         return $this->belongsTo(MpInfo::class, 'mp_info_id', 'id');
+    }
+
+    public function auto_reply_configs()
+    {
+        return $this->hasMany(AutoReplyConfig::class, 'message_id', 'id');
     }
 
     public function getTypeNameAttribute()
     {
         return self::$typeMap[$this->type];
+    }
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::deleting(function($modal) {
+            AutoReplyConfig::where('message_id', $modal->id)->delete();
+        });
     }
 }

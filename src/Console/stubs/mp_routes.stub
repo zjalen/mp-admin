@@ -2,6 +2,9 @@
 
 use Illuminate\Routing\Router;
 
+Route::get('/notify', '\App\MpAdmin\Controllers\MpAdminController@notify');
+Route::post('/notify', 'App\MpAdmin\Controllers\MpAdminController@notify');
+
 Route::group([
     'prefix' => config('mp_admin.route.prefix'),
     'namespace' => config('mp_admin.route.namespace'),

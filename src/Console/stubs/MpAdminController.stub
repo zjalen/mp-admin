@@ -54,7 +54,7 @@ class MpAdminController extends Controller
                         } elseif ($message['Event'] == 'SCAN' || $message['Event'] == 'scan') {
                             // 扫码带参二维码
                             $code = $message['EventKey'];
-                            return new News($code);
+                            return new Text($code);
                         }elseif($message['Event'] == 'CLICK'){
                             // 菜单点击事件
                             $auto_reply_config= AutoReplyConfig::where(function ($query) use ($message, $mp_model) {
@@ -73,10 +73,7 @@ class MpAdminController extends Controller
                         break;
                     case 'text':
                         // 用户回复对话框文本消息
-                        if ($message['Content'] == '测试') {
-                            $text = new Text('test');
-                            return $text;
-                        } else if ($message['Content'] == 'openid') {
+                        if ($message['Content'] == 'openid') {
                             $text = new Text($message['FromUserName']);
                             return $text;
                         }
@@ -98,7 +95,7 @@ class MpAdminController extends Controller
                                 return $replyMessage;
                             }
                         }
-                        return '已收到消息，我们会尽快处理';
+                        return '未识别消息，将由人工处理。';
                         break;
                     case 'image':
                         return '收到图片消息';
@@ -133,11 +130,20 @@ class MpAdminController extends Controller
     public function replyMessage($auto_reply_config)
     {
         $msg = \Jalen\MpAdmin\Models\Message::find($auto_reply_config->message_id);
+        $content = json_decode($msg->content, true);
         switch ($msg->type) {
             case \Jalen\MpAdmin\Models\Message::TYPE_TEXT:
-                return new Text(json_decode($msg->content, true)['content']);
+                return new Text($content['content']);
             case \Jalen\MpAdmin\Models\Message::TYPE_IMAGE:
-                return new Image(json_decode($msg->content, true)['media_id']);
+                return new Image($content['media_id']);
+            case \Jalen\MpAdmin\Models\Message::TYPE_VOICE:
+                return new Voice($content['media_id']);
+            case \Jalen\MpAdmin\Models\Message::TYPE_VIDEO:
+                return new Video($content['media_id'], $content);
+            case \Jalen\MpAdmin\Models\Message::TYPE_NEWS_ITEM:
+                return new News([new NewsItem($content)]);
+            case \Jalen\MpAdmin\Models\Message::TYPE_MEDIA:
+                return new Media($content['media_id'], $content['media_type']);
             default:
                 break;
         }
